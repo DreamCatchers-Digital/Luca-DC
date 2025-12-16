@@ -1,0 +1,140 @@
+const express = require('express');
+const db = require('../../../config/db'); // Firestore database connection
+const router = express.Router();
+const axios = require('axios');  // Assuming you're using axios for HTTP requests
+
+// Shopify Store and Access Token
+const SHOPIFY_STORE = "www.hairlocs.com";
+const SHOPIFY_ACCESS_TOKEN = "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";  // Hairlocs token
+
+// TAGS
+router.post('/', async (req, res) => {
+    try {
+        const order = req.body;
+        const customerId = order.customer.id;
+        const wholesaleTag = "wholesale";
+        const newTag = " new";
+        const verifiedTag = "verified";
+
+        const response = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
+            method: 'GET',
+            headers: {
+                'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error('Failed to fetch customer data');
+            return; 
+        }
+        const customer = await response.json();
+        let currentTags = customer.customer.tags.split(','); // Current tags are separated by commas
+        // Check if the new tag is already in the list
+        // if (!currentTags.includes(newTag) || !currentTags.includes(verifiedTag) || !currentTags.includes(wholesaleTag)) {
+        //     // currentTags.push(wholesaleTag);  // Add the new tag
+        //     return res.status(200).json({ message: 'No Tags Detected' });
+        // }
+        if (currentTags.includes('verified') || currentTags.includes(' verified')) {
+            
+            currentTags = currentTags.filter(tag => tag !== verifiedTag);  // Remove the tag if it already exists    
+            
+            // Add the wholesale tag
+            currentTags.push(wholesaleTag);  // Add the new tag
+        }
+        // else {
+        //     currentTags = currentTags.filter(tag => tag !== newTag);  // Remove the tag if it already exists    
+        // }
+        // Update the customer with the new tags
+        const updatedTags = currentTags.join(',');  // Rejoin the tags as a comma-separated string
+        const updateResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
+            method: 'PUT',
+            headers: {
+                'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                customer: {
+                    id: customerId, 
+                    tags: updatedTags
+                }
+            })
+        });
+        if (updateResponse.ok) {
+            console.log('Customer tags updated successfully');
+            return res.status(200).json({ message: 'Customer (Veried -> wholesale) tags updated successfully' });
+        } else {
+            console.error('Failed to update customer tags');
+            return res.status(500).json({ message: 'Customer tags did not update successfully' });
+        }
+    } catch (error) {
+        // console.error('Error fetching loyalty customers:', error);
+        res.status(500).json({ error: 'Internal server error, notify your IT department.' });
+    }
+});
+
+
+router.post('/notifications', async (req, res) => {
+    try {
+      const data = req.body;
+      const notificationsRef = db.collection('notify_me_hl').doc(`${data.product_id}`);
+      const docSnapshot = await notificationsRef.get();
+  
+      if (docSnapshot.exists) {
+        const currentData = docSnapshot.data();
+        const updatedWaitingList = currentData.waitingList || [];
+  
+       // Find if the customer already exists in the waitingList
+        const existingCustomerIndex = updatedWaitingList.findIndex(
+            (customer) => customer.customer_id === data.customer_id
+        );
+        
+        const customerData = {
+            customer_id: data.customer_id || '',
+            email: data.email || '',
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+            phone: data.phone || '',
+            customer_tags: data.customer_tags || '',
+        };
+        
+        if (existingCustomerIndex !== -1) {
+            // Customer exists → Update their info
+            updatedWaitingList[existingCustomerIndex] = customerData;
+        } else {
+            // Customer does not exist → Add new customer
+            updatedWaitingList.push(customerData);
+        }
+  
+  
+        await notificationsRef.update({
+          waitingList: updatedWaitingList,
+          updatedAt: new Date()
+        });
+  
+        res.status(200).json({ message: 'Added customer to waiting list' });
+      } else {
+        await notificationsRef.set({
+          product_id: data.product_id,
+          product_title: data.product_title,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          color: data.color || '',
+          waitingList: [{
+            customer_id: data.customer_id || '',
+            email: data.email || '',
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+            phone: data.phone || '',
+            customer_tags: data.customer_tags || '',
+          }]
+        });
+        res.status(200).json({ message: 'Created new notification document' });
+      }
+    } catch (error) {
+      console.error('Error handling notification request:', error);
+      res.status(500).json({ error: 'Internal server error, please notify IT.' });
+    }
+  });
+
+module.exports = router;
