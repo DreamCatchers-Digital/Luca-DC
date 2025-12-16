@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const SHOP = 'sm-dream.myshopify.com';
-const TOKEN = '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';
+const TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
 const client = axios.create({
   baseURL: `https://${SHOP}/admin/api/2024-01/graphql.json`,

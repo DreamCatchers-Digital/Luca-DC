@@ -4,8 +4,8 @@ const router = express.Router();
 const axios = require('axios');
 
 const SHOPIFY_STORE = "www.dreamcatchers.com";
-const SHOPIFY_ACCESS_TOKEN = "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";
-const HUBSPOT_TOKEN = 'pat-na1-ba55e700-bee3-4223-8a2c-580b4757fa23';
+const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+const HUBSPOT_TOKEN = process.env.HUBSPOT_TOKEN;
 
 const hubheaders = {
   Authorization: `Bearer ${HUBSPOT_TOKEN}`,

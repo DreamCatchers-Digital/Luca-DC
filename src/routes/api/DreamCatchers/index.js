@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 
 // Shopify Store and Access Token
 const SHOPIFY_STORE = 'www.dreamcatchers.com';
-const SHOPIFY_ACCESS_TOKEN = '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';
+const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 const HAIR_COLLECTION_ID = 394059120886; // Replace with the specific collection ID you want to fetch
 // Shopify API URL to fetch products from the specific collection
 

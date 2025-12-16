@@ -5,7 +5,7 @@ const readline = require('readline');
 const path = require('path');
 
 const SHOP = 'sm-dream.myshopify.com';
-const TOKEN = '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';
+const TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 const TAG_TO_ADD = 'luxe';
 
 const client = axios.create({
